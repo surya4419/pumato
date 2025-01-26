@@ -12,17 +12,30 @@ const StoreContextProvider = (props) =>{
   const [token,setToken] = useState("")
   const [food_list,setFoodlist] = useState([])
     
-  const addToCart = async (itemId) =>{
-    if (!cartItems[itemId]){
-      setCartItems((prev)=>({...prev,[itemId]:1}))
+  const addToCart = async (itemId) => {
+    if (!cartItems[itemId]) {
+        setCartItems((prev) => ({ ...prev, [itemId]: 1 }));
+    } else {
+        setCartItems((prev) => ({ ...prev, [itemId]: prev[itemId] + 1 }));
     }
-    else{
-      setCartItems((prev)=>({...prev,[itemId]:prev[itemId]+1}))
+
+    const token = localStorage.getItem("token");
+    if (token) {
+        try {
+            await axios.post(url + "/api/cart/add", { itemId }, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+        } catch (error) {
+            console.error("Error adding to cart:", error);
+            alert("Failed to add item to cart. Please check your login status.");
+        }
+    } else {
+        alert("You must be logged in to add items to the cart.");
     }
-    if(token){
-      await axios.post(url+"/api/cart/add",{itemId},{headers:{token}})
-    }
-  }
+};
+
   
 
   const removeFromCart = async (itemId) =>{
@@ -50,24 +63,39 @@ const StoreContextProvider = (props) =>{
     setFoodlist(response.data.data)
   }
 
-   const loadCartData = async (token) => {
-    const response = await axios.post(url+"/api/cart/get",{},{headers:{token}});
-    setCartItems(response.data.cartData);
-   }
+  const loadCartData = async (token) => {
+    try {
+        const response = await axios.post(url + "/api/cart/get", {}, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        setCartItems(response.data.cartData);
+    } catch (error) {
+        console.error("Error loading cart data:", error.response ? error.response.data : error.message);
+        
+    }
+};
 
 
   //stay logged in on refreshing
-  useEffect(()=>{
+  useEffect(() => {
     async function loadData() {
-      await fetchFoodlist()
-      if(localStorage.getItem("token")){
-        setToken(localStorage.getItem("token"))
-        await loadCartData(localStorage.getItem("token"))
-      }
+        try {
+            await fetchFoodlist();
+            const token = localStorage.getItem("token");
+            if (token) {
+                setToken(token);
+                await loadCartData(token);
+            }
+        } catch (error) {
+            console.error("Error loading data:", error);
+            // Optionally handle the error, e.g., set error state or show a message
+        }
     }
     loadData();
-  },[])
- 
+}, []);
+
+
+
 
 
       const contextvalue = {

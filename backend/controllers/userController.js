@@ -1,6 +1,7 @@
 import userModel from "../models/userModel.js";
 import jwt from "jsonwebtoken"
-import bcrypt from "bcrypt"
+//import bcrypt from "bcrypt"
+import argon2 from "argon2"
 import validator from "validator"
 
 
@@ -14,7 +15,7 @@ const loginUser = async (req,res) => {
             return res.json({success:false,message:"User doesn't exist"})
         }
 
-        const isMatch = await bcrypt.compare(password,user.password);
+        const isMatch = await argon2.verify(user.password,password);
         
         if(!isMatch){
             return res.json({success:false,message:"Invalid credentials"})
@@ -31,7 +32,7 @@ const loginUser = async (req,res) => {
 
 //create token
 const createToken = (id) => {
-    return jwt.sign({id},process.env.JWT_SECRET)
+    return jwt.sign({id},process.env.JWT_SECRET,{ expiresIn: '1h' })
 }
 
 
@@ -55,13 +56,12 @@ const registerUser = async (req,res) => {
         }
 
         //hashing user password
-        const salt = await bcrypt.genSalt(10)
-        const hashedPassword = await bcrypt.hash(password,salt);
+        const hashedpassword = await argon2.hash(password)
 
         const newUser = new userModel({
             name:name,
             email:email,
-            password:hashedPassword
+            password:hashedpassword
         })
 
         const user = await newUser.save()
